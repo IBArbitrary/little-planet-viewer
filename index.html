@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Little Planet Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
+	    background: #282828;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #fff;
+        }
+        
+        h1 {
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .container {
+            background: #3c3836;
+            border-radius: 0px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 900px;
+            width: 100%;
+        }
+        
+        .upload-section {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        
+        .file-input-wrapper input[type="file"] {
+            display: none;
+        }
+        
+        .file-input-wrapper label {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #504945;
+            color: #ebdbb2;
+            border-radius: 0px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        .file-input-wrapper label:hover {
+            transform: scale(1.05);
+        }
+        
+        .canvas-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        
+        canvas {
+            display: block;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            cursor: grab;
+            max-width: 100%;
+            height: auto;
+        }
+        
+        canvas:active {
+            cursor: grabbing;
+        }
+        
+        .controls {
+            background: #3c3836;
+            padding: 20px;
+            border-radius: 0px;
+            color: #ebdbb2;
+        }
+        
+        .control-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .control-row label {
+            font-weight: 600;
+            min-width: 100px;
+        }
+        
+        .control-row input[type="range"] {
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        .control-row .value-display {
+            min-width: 60px;
+            text-align: right;
+            font-family: monospace;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 0px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-primary {
+            background: #fb4934;
+            color: #282828;
+        }
+        
+        .btn-secondary {
+            background: #fabd2f;
+            color: #282828;
+        }
+        
+        .btn-success {
+            background: #b8bb26;
+            color: #282828;
+        }
+        
+        .info-text {
+            background: #504945;
+            padding: 15px;
+            border-radius: 0px;
+            margin-bottom: 20px;
+            color: #ebdbb2;
+            font-size: 14px;
+        }
+        
+        .keyboard-hints {
+            background: #504945;
+            padding: 15px;
+            border-radius: 0px;
+            margin-top: 15px;
+            color: #ebdbb2;
+            font-size: 13px;
+        }
+        
+        .keyboard-hints strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        #status {
+            text-align: center;
+            color: #928374;
+            margin: 10px 0;
+            font-style: italic;
+        }
+        
+        @media (max-width: 600px) {
+            .control-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .control-row label {
+                margin-bottom: 5px;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>🌍 Little Planet Viewer</h1>
+    
+    <div class="container">
+        <div class="upload-section">
+            <div class="file-input-wrapper">
+                <input type="file" id="fileInput" accept="image/*">
+                <label for="fileInput">📁 Load 360° Panorama</label>
+            </div>
+            <div id="status">No image loaded</div>
+        </div>
+        
+        <div class="info-text">
+            Upload a 360° equirectangular panorama image to create stunning little planet effects!
+        </div>
+        
+        <div style="text-align: center;">
+            <div class="canvas-wrapper">
+                <canvas id="canvas" width="800" height="800"></canvas>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-row">
+                <label>🔍 Zoom:</label>
+                <input type="range" id="scaleSlider" min="0.1" max="20" step="0.1" value="6">
+                <span class="value-display" id="scaleValue">1</span>
+            </div>
+            
+            <div class="control-row">
+                <label>↔️ Longitude:</label>
+                <input type="range" id="lonSlider" min="-180" max="180" step="1" value="0">
+                <span class="value-display" id="lonValue">0°</span>
+            </div>
+            
+            <div class="control-row">
+                <label>↕️ Latitude:</label>
+                <input type="range" id="latSlider" min="-90" max="90" step="1" value="90">
+                <span class="value-display" id="latValue">90°</span>
+            </div>
+            
+            <div class="control-row">
+                <label>🔄 Roll:</label>
+                <input type="range" id="rollSlider" min="0" max="360" step="1" value="0">
+                <span class="value-display" id="rollValue">0°</span>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn-primary" id="invertBtn">🔀 Toggle Invert</button>
+                <button class="btn-secondary" id="resetBtn">↺ Reset View</button>
+                <button class="btn-success" id="saveBtn">💾 Save Image</button>
+            </div>
+            
+            <div class="keyboard-hints">
+                <strong>⌨️ Keyboard Shortcuts:</strong>
+                • Drag to pan • A/D or ←/→ to rotate • +/- to zoom • I to invert • R to reset • S to save
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const fileInput = document.getElementById('fileInput');
+        const status = document.getElementById('status');
+        
+        // Sliders
+        const scaleSlider = document.getElementById('scaleSlider');
+        const lonSlider = document.getElementById('lonSlider');
+        const latSlider = document.getElementById('latSlider');
+        const rollSlider = document.getElementById('rollSlider');
+        
+        // Value displays
+        const scaleValue = document.getElementById('scaleValue');
+        const lonValue = document.getElementById('lonValue');
+        const latValue = document.getElementById('latValue');
+        const rollValue = document.getElementById('rollValue');
+        
+        // Buttons
+        const invertBtn = document.getElementById('invertBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        
+        // State
+        let panoramaImg = null;
+        let panoramaData = null; // Cache the image data
+        let renderTimeout = null; // For debouncing
+        let state = {
+            scale: 6.0,
+            lon: 0,
+            lat: 90,
+            roll: 0,
+            invert: false,
+            dragging: false,
+            lastX: 0,
+            lastY: 0
+        };
+        
+        // Load image
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        panoramaImg = img;
+                        
+                        // Pre-process and cache the panorama data
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = img.width;
+                        tempCanvas.height = img.height;
+                        const tempCtx = tempCanvas.getContext('2d');
+                        tempCtx.drawImage(img, 0, 0);
+                        panoramaData = tempCtx.getImageData(0, 0, img.width, img.height);
+                        
+                        status.textContent = `Loaded: ${file.name} (${img.width}x${img.height})`;
+                        render();
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Slider events - use requestAnimationFrame for smooth updates
+        scaleSlider.addEventListener('input', (e) => {
+            state.scale = parseFloat(e.target.value);
+            scaleValue.textContent = state.scale.toFixed(2);
+            requestRender();
+        });
+        
+        lonSlider.addEventListener('input', (e) => {
+            state.lon = parseFloat(e.target.value);
+            lonValue.textContent = state.lon.toFixed(0) + '°';
+            requestRender();
+        });
+        
+        latSlider.addEventListener('input', (e) => {
+            state.lat = parseFloat(e.target.value);
+            latValue.textContent = state.lat.toFixed(0) + '°';
+            requestRender();
+        });
+        
+        rollSlider.addEventListener('input', (e) => {
+            state.roll = parseFloat(e.target.value);
+            rollValue.textContent = state.roll.toFixed(0) + '°';
+            requestRender();
+        });
+        
+        // Button events
+        invertBtn.addEventListener('click', () => {
+            state.invert = !state.invert;
+            requestRender();
+        });
+        
+        resetBtn.addEventListener('click', () => {
+            state.scale = 6.0;
+            state.lon = 0;
+            state.lat = 90;
+            state.roll = 0;
+            state.invert = false;
+            updateSliders();
+            requestRender();
+        });
+        
+        saveBtn.addEventListener('click', () => {
+            if (!panoramaImg) {
+                alert('Please load an image first!');
+                return;
+            }
+            
+            // Create high-resolution canvas
+            const highResSize = 4096;
+            const highResCanvas = document.createElement('canvas');
+            highResCanvas.width = highResSize;
+            highResCanvas.height = highResSize;
+            
+            saveBtn.disabled = true;
+            saveBtn.textContent = '⏳ Rendering...';
+            status.textContent = 'Generating high-resolution image...';
+            
+            // Use setTimeout to allow UI to update
+            setTimeout(() => {
+                renderToCanvas(highResCanvas);
+                
+                const link = document.createElement('a');
+                link.download = `little_planet_${Date.now()}.png`;
+                link.href = highResCanvas.toDataURL('image/png');
+                link.click();
+                
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 Save Image';
+                status.textContent = `Saved high-resolution image (${highResSize}x${highResSize})!`;
+            }, 50);
+        });
+        
+        // Mouse dragging
+        canvas.addEventListener('mousedown', (e) => {
+            state.dragging = true;
+            state.lastX = e.offsetX;
+            state.lastY = e.offsetY;
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            state.dragging = false;
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            state.dragging = false;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (state.dragging) {
+                const dx = e.offsetX - state.lastX;
+                const dy = e.offsetY - state.lastY;
+                
+                state.lon -= dx * 0.2;
+                state.lat -= dy * 0.2;
+                state.lat = Math.max(-90, Math.min(90, state.lat));
+                
+                state.lastX = e.offsetX;
+                state.lastY = e.offsetY;
+                
+                updateSliders();
+                requestRender();
+            }
+        });
+        
+        // Touch support for mobile
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            state.dragging = true;
+            state.lastX = touch.clientX - rect.left;
+            state.lastY = touch.clientY - rect.top;
+        });
+        
+        canvas.addEventListener('touchend', () => {
+            state.dragging = false;
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (state.dragging) {
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+                
+                const dx = x - state.lastX;
+                const dy = y - state.lastY;
+                
+                state.lon -= dx * 0.2;
+                state.lat -= dy * 0.2;
+                state.lat = Math.max(-90, Math.min(90, state.lat));
+                
+                state.lastX = x;
+                state.lastY = y;
+                
+                updateSliders();
+                requestRender();
+            }
+        });
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            let handled = false;
+            
+            switch(e.key.toLowerCase()) {
+                case 'a':
+                case 'arrowleft':
+                    state.roll = (state.roll - 5 + 360) % 360;
+                    handled = true;
+                    break;
+                case 'd':
+                case 'arrowright':
+                    state.roll = (state.roll + 5) % 360;
+                    handled = true;
+                    break;
+                case '+':
+                case '=':
+                    state.scale = Math.min(20, state.scale * 1.1);
+                    handled = true;
+                    break;
+                case '-':
+                case '_':
+                    state.scale = Math.max(0.1, state.scale / 1.1);
+                    handled = true;
+                    break;
+                case 'i':
+                    state.invert = !state.invert;
+                    handled = true;
+                    break;
+                case 'r':
+                    resetBtn.click();
+                    handled = true;
+                    break;
+                case 's':
+                    saveBtn.click();
+                    handled = true;
+                    break;
+            }
+            
+            if (handled) {
+                e.preventDefault();
+                updateSliders();
+                requestRender();
+            }
+        });
+        
+        // Optimized render request using requestAnimationFrame
+        let renderScheduled = false;
+        function requestRender() {
+            if (!renderScheduled) {
+                renderScheduled = true;
+                requestAnimationFrame(() => {
+                    render();
+                    renderScheduled = false;
+                });
+            }
+        }
+        
+        function updateSliders() {
+            scaleSlider.value = state.scale;
+            scaleValue.textContent = state.scale.toFixed(2);
+            
+            lonSlider.value = state.lon;
+            lonValue.textContent = state.lon.toFixed(0) + '°';
+            
+            latSlider.value = state.lat;
+            latValue.textContent = state.lat.toFixed(0) + '°';
+            
+            rollSlider.value = state.roll;
+            rollValue.textContent = state.roll.toFixed(0) + '°';
+        }
+        
+        function render() {
+            renderToCanvas(canvas);
+        }
+        
+        function renderToCanvas(targetCanvas) {
+            const ctx = targetCanvas.getContext('2d');
+            
+            if (!panoramaImg || !panoramaData) {
+                ctx.fillStyle = '#333';
+                ctx.fillRect(0, 0, targetCanvas.width, targetCanvas.height);
+                ctx.fillStyle = '#fff';
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Load a 360° panorama to begin', targetCanvas.width / 2, targetCanvas.height / 2);
+                return;
+            }
+            
+            const width = targetCanvas.width;
+            const height = targetCanvas.height;
+            const imageData = ctx.createImageData(width, height);
+            const data = imageData.data;
+            
+            const panoWidth = panoramaImg.width;
+            const panoHeight = panoramaImg.height;
+            const panoPixels = panoramaData.data;
+            
+            // Convert degrees to radians
+            const lonRad = state.lon * Math.PI / 180;
+            const latRad = state.lat * Math.PI / 180;
+            const rollRad = state.roll * Math.PI / 180;
+            
+            const cosLon = Math.cos(-lonRad);
+            const sinLon = Math.sin(-lonRad);
+            const cosLat = Math.cos(-latRad);
+            const sinLat = Math.sin(-latRad);
+            const cosRoll = Math.cos(rollRad);
+            const sinRoll = Math.sin(rollRad);
+            
+            // Process in chunks to avoid blocking
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    // Normalized coordinates
+                    let px = (x / width - 0.5) * state.scale;
+                    let py = (y / height - 0.5) * state.scale;
+                    
+                    if (state.invert) {
+                        px = -px;
+                        py = -py;
+                    }
+                    
+                    // Stereographic projection to sphere
+                    const xx = px * px;
+                    const yy = py * py;
+                    const den = 1.0 + xx + yy;
+                    
+                    let sx = 2.0 * px / den;
+                    let sy = 2.0 * py / den;
+                    let sz = (xx + yy - 1.0) / den;
+                    
+                    // Apply roll rotation (around Z-axis)
+                    let rx = cosRoll * sx - sinRoll * sy;
+                    let ry = sinRoll * sx + cosRoll * sy;
+                    let rz = sz;
+                    
+                    // Apply longitude rotation (around Y-axis)
+                    let tx = cosLon * rx + sinLon * rz;
+                    let ty = ry;
+                    let tz = -sinLon * rx + cosLon * rz;
+                    
+                    // Apply latitude rotation (around X-axis)
+                    let fx = tx;
+                    let fy = cosLat * ty - sinLat * tz;
+                    let fz = sinLat * ty + cosLat * tz;
+                    
+                    // Convert back to lat/lon
+                    const finalLon = Math.atan2(fx, fz);
+                    const finalLat = Math.asin(Math.max(-1, Math.min(1, fy)));
+                    
+                    // Map to panorama coordinates
+                    let u = (finalLon / (2 * Math.PI) + 0.5) * panoWidth;
+                    let v = (0.5 - finalLat / Math.PI) * panoHeight;
+                    
+                    // Wrap u coordinate
+                    u = ((u % panoWidth) + panoWidth) % panoWidth;
+                    v = Math.max(0, Math.min(panoHeight - 1, v));
+                    
+                    // Bilinear interpolation
+                    const u0 = Math.floor(u);
+                    const v0 = Math.floor(v);
+                    const u1 = (u0 + 1) % panoWidth;
+                    const v1 = Math.min(v0 + 1, panoHeight - 1);
+                    
+                    const fu = u - u0;
+                    const fv = v - v0;
+                    
+                    const idx = (y * width + x) * 4;
+                    const idx00 = (v0 * panoWidth + u0) * 4;
+                    const idx10 = (v0 * panoWidth + u1) * 4;
+                    const idx01 = (v1 * panoWidth + u0) * 4;
+                    const idx11 = (v1 * panoWidth + u1) * 4;
+                    
+                    // Interpolate each color channel
+                    for (let c = 0; c < 3; c++) {
+                        const p00 = panoPixels[idx00 + c];
+                        const p10 = panoPixels[idx10 + c];
+                        const p01 = panoPixels[idx01 + c];
+                        const p11 = panoPixels[idx11 + c];
+                        
+                        const p0 = p00 * (1 - fu) + p10 * fu;
+                        const p1 = p01 * (1 - fu) + p11 * fu;
+                        const p = p0 * (1 - fv) + p1 * fv;
+                        
+                        data[idx + c] = p;
+                    }
+                    data[idx + 3] = 255;
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+        
+        // Initial render
+        render();
+    </script>
+</body>
+</html>
